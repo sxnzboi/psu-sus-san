@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ส่งเสื้อ PSU SUS — ระบบจัดการและส่งมอบเสื้อผ้า</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
+
+<style>
+:root {
+  --bg: #f4f1ea; --bg-elevated: #ffffff; --bg-soft: #ebe6da;
+  --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-muted: #8a857a;
+  --line: #d9d3c4; --line-soft: #e6e1d3;
+  --accent: #d83a18; --accent-ink: #ffffff; --accent-soft: #fde8e2;
+  --success: #2d6a4f; --success-soft: #d4ead9;
+  --warn: #c08a00; --warn-soft: #fbecc4;
+  --info: #1e5fa8; --info-soft: #dbeaf7;
+  --shadow-md: 0 4px 16px rgba(20,15,5,0.08);
+  --shadow-lg: 0 12px 40px rgba(20,15,5,0.14);
+  --radius: 14px; --radius-lg: 20px;
+  --font-display: 'Bai Jamjuree', 'IBM Plex Sans Thai', sans-serif;
+  --font-body: 'IBM Plex Sans Thai', sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+}
+[data-theme="dark"] {
+  --bg: #0e0d0c; --bg-elevated: #1a1816; --bg-soft: #232120;
+  --ink: #f4f0e7; --ink-soft: #c9c3b6; --ink-muted: #847e72;
+  --line: #2c2a27; --line-soft: #232120;
+  --accent: #ff5a36; --accent-ink: #0e0d0c; --accent-soft: #2a1612;
+  --success: #5fb88a; --success-soft: #15281f;
+  --warn: #e6b94a; --warn-soft: #2a2010;
+  --info: #6fa8dc; --info-soft: #15212a;
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body); background: var(--bg); color: var(--ink);
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  transition: background-color .25s ease, color .25s ease; overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.4'/></svg>");
+  opacity: 0.025; z-index: 1; mix-blend-mode: multiply;
+}
+[data-theme="dark"] body::before { mix-blend-mode: screen; opacity: 0.05; }
+button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; }
+
+#intro { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#intro.hide { animation: introOut .7s cubic-bezier(.7,0,.3,1) forwards; }
+@keyframes introOut { to { opacity: 0; pointer-events: none; transform: scale(1.02); } }
+.intro-bg-grid { position: absolute; inset: 0; background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px); background-size: 48px 48px; opacity: 0.5; animation: gridDrift 12s linear infinite; }
+@keyframes gridDrift { to { background-position: 48px 48px; } }
+.intro-blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5; animation: blobFloat 6s ease-in-out infinite; }
+.intro-blob.b1 { width: 380px; height: 380px; background: var(--accent); top: -10%; left: -8%; }
+.intro-blob.b2 { width: 320px; height: 320px; background: #2d6a4f; bottom: -10%; right: -5%; animation-delay: -3s; }
+@keyframes blobFloat { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-20px) scale(1.1); } }
+.intro-content { position: relative; z-index: 2; text-align: center; padding: 0 20px; }
+.intro-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--ink-muted); text-transform: uppercase; margin-bottom: 28px; opacity: 0; animation: fadeUp .6s ease forwards .2s; }
+.intro-tag::before, .intro-tag::after { content: ''; width: 28px; height: 1px; background: var(--ink-muted); }
+.intro-title { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 9vw, 6.5rem); line-height: 1; letter-spacing: -0.02em; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15em; }
+.intro-title .word { display: inline-block; opacity: 0; transform: translateY(60px) rotate(8deg); animation: wordIn .9s cubic-bezier(.2,.8,.2,1) forwards; }
+.intro-title .word.w1 { animation-delay: .3s; }
+.intro-title .word.w2 { animation-delay: .55s; color: var(--accent); }
+.intro-title .word.w3 { animation-delay: .8s; color: var(--accent); }
+@keyframes wordIn { to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.intro-shirt-icon { position: absolute; font-size: 0; animation: shirtBounce 2.4s ease-in-out infinite; }
+.intro-shirt-icon.s1 { top: 18%; left: 14%; }
+.intro-shirt-icon.s2 { top: 22%; right: 12%; animation-delay: -0.6s; }
+.intro-shirt-icon.s3 { bottom: 22%; left: 18%; animation-delay: -1.2s; }
+.intro-shirt-icon.s4 { bottom: 18%; right: 16%; animation-delay: -1.8s; }
+@keyframes shirtBounce { 0%,100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-20px) rotate(8deg); } }
+.intro-shirt-icon svg { width: 56px; height: 56px; opacity: 0.7; }
+.intro-cta { margin-top: 40px; opacity: 0; transform: translateY(20px); animation: ctaIn .8s cubic-bezier(.2,.8,.2,1) forwards 1.4s; }
+@keyframes ctaIn { to { opacity: 1; transform: translateY(0); } }
+.intro-cta button { position: relative; padding: 16px 40px; background: var(--accent); color: var(--accent-ink); border-radius: 99px; font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: 0.02em; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent); transition: all .25s cubic-bezier(.2,.8,.2,1); overflow: hidden; }
+.intro-cta button::before { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.3) 50%, transparent 70%); background-size: 200% 100%; animation: shimmer 2.5s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.intro-cta button:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 45%, transparent); }
+.intro-cta button svg { width: 18px; height: 18px; position: relative; z-index: 1; }
+.intro-cta button span { position: relative; z-index: 1; }
+.intro-cta .hint { margin-top: 14px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); letter-spacing: 0.1em; }
+
+.app { opacity: 0; pointer-events: none; transition: opacity .6s ease .3s; position: relative; z-index: 2; }
+.app.ready { opacity: 1; pointer-events: auto; }
+
+/* Firebase connection indicator */
+.fb-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 99px;
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.fb-status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink-muted);
+}
+.fb-status.connected { background: var(--success-soft); color: var(--success); }
+.fb-status.connected .dot { background: var(--success); animation: pulse 2s ease-in-out infinite; }
+.fb-status.error { background: var(--accent-soft); color: var(--accent); }
+.fb-status.error .dot { background: var(--accent); }
+.fb-status.offline { background: var(--warn-soft); color: var(--warn); }
+.fb-status.offline .dot { background: var(--warn); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Firebase not configured screen */
+.fb-setup-needed {
+  position: fixed; inset: 0; background: var(--bg);
+  display: none; align-items: center; justify-content: center;
+  z-index: 10000; padding: 24px;
+}
+.fb-setup-needed.show { display: flex; }
+.fb-setup-card {
+  max-width: 580px; background: var(--bg-elevated);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: 32px; box-shadow: var(--shadow-lg);
+}
+.fb-setup-card h1 { font-family: var(--font-display); font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+.fb-setup-card h2 { font-family: var(--font-display); font-size: 16px; margin-top: 20px; margin-bottom: 8px; }
+.fb-setup-card p { font-size: 14px; color: var(--ink-soft); margin-bottom: 12px; line-height: 1.6; }
+.fb-setup-card code { background: var(--bg-soft); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.fb-setup-card pre { background: var(--bg-soft); padding: 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; overflow-x: auto; line-height: 1.5; margin: 10px 0; }
+.fb-setup-card ol { padding-left: 22px; font-size: 14px; line-height: 1.7; color: var(--ink-soft); }
+.fb-setup-card ol li { margin-bottom: 6px; }
+
+.topbar { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+.topbar-inner { max-width: 1400px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; white-space: nowrap; }
+.brand-mark { width: 32px; height: 32px; background: var(--accent); color: var(--accent-ink); border-radius: 9px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.brand-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; color: var(--ink-muted); text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--line); border-radius: 99px; }
+.topbar-spacer { flex: 1; }
+.event-switch { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 14px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 99px; font-size: 13px; transition: all .15s ease; max-width: 260px; }
+.event-switch:hover { border-color: var(--ink-muted); }
+.event-switch .label { font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.event-switch .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.event-switch::after { content: '▾'; color: var(--ink-muted); font-size: 10px; }
+.theme-toggle { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-elevated); border: 1px solid var(--line); display: grid; place-items: center; transition: all .2s ease; }
+.theme-toggle:hover { transform: rotate(20deg); border-color: var(--accent); }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .moon { display: none; }
+[data-theme="dark"] .theme-toggle .sun { display: none; }
+[data-theme="dark"] .theme-toggle .moon { display: block; }
+.main { max-width: 1400px; margin: 0 auto; padding: 32px 24px 80px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
+.page-head h1 { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.page-head h1 .accent { color: var(--accent); font-style: italic; }
+.page-head .subtitle { font-size: 14px; color: var(--ink-soft); margin-top: 6px; }
+.page-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 500; transition: all .15s ease; border: 1px solid transparent; white-space: nowrap; }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.btn-ghost { background: var(--bg-elevated); border-color: var(--line); color: var(--ink); }
+.btn-ghost:hover { border-color: var(--ink-muted); background: var(--bg-soft); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { filter: brightness(1.1); }
+.btn-warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.btn-warn:hover { background: var(--warn); color: white; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.stat { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; position: relative; overflow: hidden; transition: all .2s ease; cursor: pointer; }
+.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat.is-active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.stat .stat-label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+.stat .stat-label .filter-mark { display: none; font-size: 9px; padding: 2px 6px; background: var(--accent); color: var(--accent-ink); border-radius: 99px; letter-spacing: 0.05em; }
+.stat.is-active .stat-label .filter-mark { display: inline-block; }
+.stat .stat-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.stat .stat-sub { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+.stat.success .stat-value { color: var(--success); }
+.stat.pending .stat-value { color: var(--warn); }
+.stat.accent .stat-value { color: var(--accent); }
+.stat .stat-deco { position: absolute; right: -12px; bottom: -12px; font-size: 80px; font-family: var(--font-display); font-weight: 700; opacity: 0.05; line-height: 1; pointer-events: none; }
+.progress-bar { margin-top: 12px; height: 6px; background: var(--bg-soft); border-radius: 99px; overflow: hidden; }
+.progress-bar > div { height: 100%; background: var(--success); border-radius: 99px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 14px 16px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 12px; align-items: center; }
+.filter-bar .filter-label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); letter-spacing: 0.1em; text-transform: uppercase; padding-right: 4px; }
+.filter-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 99px; font-size: 13px; transition: all .15s ease; }
+.filter-pill:hover { border-color: var(--ink-muted); }
+.filter-pill.active { background: var(--ink); color: var(--bg-elevated); border-color: var(--ink); }
+.filter-pill .count { font-family: var(--font-mono); font-size: 11px; background: var(--bg-soft); color: var(--ink-soft); padding: 1px 7px; border-radius: 99px; }
+.filter-pill.active .count { background: rgba(255,255,255,0.15); color: var(--bg-elevated); }
+.filter-select { padding: 6px 32px 6px 12px; background: var(--bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238a857a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center; border: 1px solid var(--line); border-radius: 99px; font-size: 13px; appearance: none; -webkit-appearance: none; cursor: pointer; max-width: 220px; }
+.filter-select:focus { outline: none; border-color: var(--accent); }
+[data-theme="dark"] .filter-select { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23847e72' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"); }
+.filter-clear { margin-left: auto; padding: 6px 12px; font-size: 12px; color: var(--accent); border-radius: 99px; }
+.filter-clear:hover { background: var(--accent-soft); }
+.filter-clear:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; }
+@media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+.card { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.card-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-head h2 { font-family: var(--font-display); font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.card-head h2::before { content: ''; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; }
+.card-body { padding: 20px; }
+
+.search-wrap { position: relative; margin-bottom: 16px; }
+.search-input { width: 100%; padding: 14px 18px 14px 46px; border: 1.5px solid var(--line); background: var(--bg); border-radius: 12px; font-size: 15px; transition: all .15s ease; }
+.search-input:focus { outline: none; border-color: var(--accent); background: var(--bg-elevated); box-shadow: 0 0 0 4px var(--accent-soft); }
+.search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); pointer-events: none; }
+.search-icon svg { width: 18px; height: 18px; }
+.search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); padding: 6px; color: var(--ink-muted); border-radius: 6px; display: none; }
+.search-clear.show { display: block; }
+.search-clear:hover { color: var(--ink); background: var(--bg-soft); }
+.results-list { display: flex; flex-direction: column; gap: 8px; max-height: 700px; overflow-y: auto; padding-right: 4px; }
+.results-list::-webkit-scrollbar { width: 6px; }
+.results-list::-webkit-scrollbar-track { background: transparent; }
+.results-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--ink-muted); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state h3 { font-family: var(--font-display); font-size: 16px; margin-bottom: 4px; color: var(--ink-soft); }
+.empty-state p { font-size: 13px; }
+.empty-state .loader { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.recipient-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 10px; transition: all .15s ease; }
+.recipient-row:hover { border-color: var(--ink-muted); }
+.recipient-row.received { background: var(--success-soft); border-color: var(--success); }
+.recipient-row.incomplete:not(.received) { border-left: 3px solid var(--warn); }
+.recipient-row.just-updated { animation: flashUpdate 1.5s ease; }
+@keyframes flashUpdate {
+  0% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  30% { box-shadow: 0 0 0 4px var(--accent-soft); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.recipient-row .info { min-width: 0; }
+.recipient-row .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.recipient-row .name mark { background: var(--accent-soft); color: var(--accent); padding: 0 2px; border-radius: 3px; }
+.recipient-row .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+
+.order-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 8px 10px; background: var(--bg-soft); border-radius: 8px; border-left: 3px solid var(--accent); }
+.order-summary.empty { border-left-color: var(--warn); background: var(--warn-soft); }
+.order-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 99px; font-size: 12px; }
+.order-item .icon { font-size: 13px; }
+.order-item .label { color: var(--ink-soft); }
+.order-item .size { font-family: var(--font-mono); font-weight: 700; background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 4px; letter-spacing: 0.04em; }
+.order-item .qty { font-family: var(--font-mono); font-weight: 700; color: var(--ink); }
+.order-item .qty.multi { background: var(--accent); color: var(--accent-ink); padding: 1px 6px; border-radius: 99px; font-size: 11px; min-width: 22px; text-align: center; }
+.order-item.no-data { color: var(--warn); font-style: italic; background: transparent; border-style: dashed; border-color: var(--warn); }
+.shirt-type-tag { display: inline-flex; align-items: center; padding: 2px 8px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 99px; font-size: 11px; color: var(--ink-soft); }
+
+.faculty-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--info-soft); color: var(--info); border-radius: 99px; font-size: 11px; font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.purchase-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.03em; }
+.purchase-tag.set { background: var(--accent-soft); color: var(--accent); }
+.purchase-tag.separate { background: var(--info-soft); color: var(--info); }
+.purchase-tag.empty { background: var(--bg-soft); color: var(--ink-muted); }
+.incomplete-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; background: var(--warn-soft); color: var(--warn); border-radius: 99px; font-size: 11px; font-weight: 600; }
+.incomplete-badge svg { width: 11px; height: 11px; }
+.status-pill { font-size: 11px; font-family: var(--font-mono); padding: 3px 10px; border-radius: 99px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+.status-pill.pending { background: var(--warn-soft); color: var(--warn); }
+.status-pill.received { background: var(--success); color: white; }
+.received-by { font-size: 10px; color: var(--success); font-style: italic; margin-left: 4px; }
+.recipient-row .actions { display: flex; gap: 6px; }
+.recipient-row .ts { font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted); margin-top: 2px; }
+
+.matrix-section + .matrix-section { margin-top: 22px; }
+.matrix-section h3 { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.matrix-section h3 .total { font-family: var(--font-mono); color: var(--ink); background: var(--bg-soft); padding: 2px 8px; border-radius: 6px; font-size: 11px; }
+.matrix-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+.matrix-cell { background: var(--bg); border: 1px solid var(--line-soft); border-radius: 10px; padding: 10px 8px; text-align: center; transition: all .15s ease; }
+.matrix-cell:hover { transform: translateY(-2px); border-color: var(--accent); }
+.matrix-cell .size { font-family: var(--font-mono); font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+.matrix-cell .count { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+.matrix-cell .count .total-num { font-size: 12px; color: var(--ink-muted); font-weight: 400; }
+.matrix-cell.depleted { opacity: 0.5; }
+.matrix-cell.depleted .count { color: var(--ink-muted); }
+.matrix-cell.unusual { border-color: var(--warn); }
+.matrix-cell.unusual .size { color: var(--warn); font-size: 10px; }
+
+.purchase-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px dashed var(--line); }
+.purchase-summary .ps-item { text-align: center; padding: 10px 6px; background: var(--bg); border-radius: 10px; border: 1px solid var(--line-soft); }
+.purchase-summary .ps-label { font-size: 10px; font-family: var(--font-mono); color: var(--ink-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.purchase-summary .ps-count { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
+.purchase-summary .ps-item.set .ps-count { color: var(--accent); }
+.purchase-summary .ps-item.separate .ps-count { color: var(--info); }
+
+.modal-back { position: fixed; inset: 0; background: rgba(10,8,5,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s ease; }
+.modal-back.show { display: flex; }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.modal { background: var(--bg-elevated); border-radius: var(--radius-lg); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: modalIn .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.modal-head h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.modal-head .close { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--ink-muted); }
+.modal-head .close:hover { background: var(--bg-soft); color: var(--ink); }
+.modal-body { padding: 22px 24px 24px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--ink-soft); }
+.form-group input[type="text"], .form-group select { width: 100%; padding: 11px 14px; border: 1.5px solid var(--line); background: var(--bg); border-radius: 10px; font-size: 14px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.dropzone { border: 2px dashed var(--line); border-radius: 14px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all .2s ease; background: var(--bg); }
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone .icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.dropzone strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.dropzone .hint { font-size: 12px; color: var(--ink-muted); }
+.event-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.event-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; transition: all .15s ease; }
+.event-item:hover { border-color: var(--ink-muted); }
+.event-item.active { border-color: var(--accent); background: var(--accent-soft); }
+.event-item .info .name { font-weight: 600; font-size: 14px; }
+.event-item .info .meta { font-size: 11px; color: var(--ink-muted); font-family: var(--font-mono); margin-top: 2px; }
+.event-item .del { padding: 6px 8px; color: var(--ink-muted); border-radius: 6px; }
+.event-item .del:hover { color: var(--accent); background: var(--bg-elevated); }
+.divider { height: 1px; background: var(--line); margin: 16px 0; }
+
+.user-name-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--bg-soft);
+  border-radius: 10px; font-size: 13px;
+}
+.user-name-bar .avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center;
+  font-weight: 700; font-family: var(--font-display);
+  font-size: 13px;
+}
+.user-name-bar .name { flex: 1; font-weight: 500; }
+.user-name-bar button {
+  padding: 4px 10px; font-size: 11px; color: var(--accent);
+  border: 1px solid var(--line); border-radius: 99px; background: var(--bg-elevated);
+}
+
+.import-summary { background: var(--info-soft); border: 1px solid var(--info); border-radius: 10px; padding: 12px 14px; margin-top: 14px; font-size: 13px; color: var(--info); line-height: 1.6; }
+.import-summary strong { color: var(--ink); }
+.import-progress { background: var(--bg-soft); border-radius: 10px; padding: 14px; margin-top: 14px; }
+.import-progress .label { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.import-progress .bar { height: 10px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+.import-progress .bar > div { height: 100%; background: var(--accent); transition: width .3s ease; border-radius: 99px; }
+.import-progress .hint { font-size: 11px; color: var(--ink-muted); margin-top: 6px; font-family: var(--font-mono); }
+
+#toast-area { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { background: var(--ink); color: var(--bg-elevated); padding: 12px 20px; border-radius: 99px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px; animation: toastIn .3s cubic-bezier(.2,.8,.2,1), toastOut .3s ease forwards 3s; pointer-events: auto; max-width: 90vw; }
+.toast.success { background: var(--success); color: white; }
+.toast.error { background: var(--accent); color: var(--accent-ink); }
+.toast.warn { background: var(--warn); color: white; }
+.toast.realtime { background: var(--info); color: white; }
+.toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(20px); } }
+
+@media (max-width: 640px) {
+  .topbar-inner { padding: 10px 16px; gap: 10px; }
+  .brand-tag { display: none; }
+  .event-switch { padding: 6px 10px 6px 12px; font-size: 12px; }
+  .event-switch .name { max-width: 80px; }
+  .fb-status { font-size: 9px; padding: 3px 8px; }
+  .main { padding: 20px 16px 60px; }
+  .page-head h1 { font-size: 1.7rem; }
+  .stat { padding: 14px 16px; }
+  .stat .stat-value { font-size: 1.8rem; }
+  .recipient-row { grid-template-columns: 1fr; align-items: stretch; }
+  .recipient-row .actions { justify-content: flex-end; flex-wrap: wrap; }
+  .matrix-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+  .card-body { padding: 16px; }
+  .card-head { padding: 14px 16px; }
+  .btn { padding: 8px 12px; font-size: 13px; }
+  .filter-bar { padding: 10px 12px; gap: 6px; }
+  .filter-pill { padding: 5px 10px; font-size: 12px; }
+  .filter-select { font-size: 12px; max-width: 160px; }
+  .purchase-summary .ps-count { font-size: 1.1rem; }
+  .order-summary { padding: 6px 8px; gap: 4px; }
+  .order-item { padding: 2px 8px; font-size: 11px; }
+  .intro-cta button { padding: 14px 32px; font-size: 15px; }
+}
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro">
+  <div class="intro-bg-grid"></div>
+  <div class="intro-blob b1"></div>
+  <div class="intro-blob b2"></div>
+  <div class="intro-shirt-icon s1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l4-3h10l4 3-2 3-2-1v12H7V9L5 10z"/></svg></div>
+  <div class="intro-shirt-icon s2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l4-3h10l4 3-2 3-2-1v12H7V9L5 10z"/></svg></div>
+  <div class="intro-shirt-icon s3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l4-3h10l4 3-2 3-2-1v12H7V9L5 10z"/></svg></div>
+  <div class="intro-shirt-icon s4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l4-3h10l4 3-2 3-2-1v12H7V9L5 10z"/></svg></div>
+  <div class="intro-content">
+    <div class="intro-tag">PSU SUS · CLOUD HANDOVER SYSTEM</div>
+    <h1 class="intro-title">
+      <span class="word w1">ส่งเสื้อ</span>
+      <span class="word w2">PSU</span>
+      <span class="word w3">SUS</span>
+    </h1>
+    <div class="intro-cta">
+      <button id="btn-enter">
+        <span>เข้าสู่ระบบ</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <div class="hint">⚡ ระบบ Cloud · sync ทุกเครื่องอัตโนมัติ</div>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE SETUP NEEDED SCREEN -->
+<div id="fb-setup-needed" class="fb-setup-needed">
+  <div class="fb-setup-card">
+    <h1>⚠️ ต้องตั้งค่า Firebase ก่อน</h1>
+    <p>ระบบนี้ใช้ Firebase Firestore เพื่อ sync ข้อมูลระหว่างเครื่อง คุณต้องใส่ Firebase Config ก่อนใช้งาน</p>
+
+    <h2>วิธีตั้งค่า (15 นาที):</h2>
+    <ol>
+      <li>เข้า <code>console.firebase.google.com</code> ลงชื่อด้วย Google account</li>
+      <li>กด "Add project" → ตั้งชื่อ project</li>
+      <li>เปิด <strong>Firestore Database</strong> → Create database → Test mode → asia-southeast1</li>
+      <li>ไปที่ Project Settings → Your apps → Web app (icon <code>&lt;/&gt;</code>) → คัดลอก <code>firebaseConfig</code></li>
+      <li>เปิดไฟล์ <code>psu-sus-handover.html</code> ด้วย Notepad/VS Code</li>
+      <li>หาคำว่า <code>FIREBASE_CONFIG_HERE</code></li>
+      <li>แทนที่ <code>firebaseConfig</code> ด้วย config ของคุณ บันทึก แล้ว refresh เพจ</li>
+    </ol>
+
+    <p style="margin-top:18px;">ดูคู่มือเต็มใน <code>SETUP_FIREBASE.md</code></p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">PS</div>
+        <span>ส่งเสื้อ PSU SUS</span>
+        <span class="brand-tag">v7.0 Cloud</span>
+      </div>
+      <span class="fb-status offline" id="fb-status">
+        <span class="dot"></span>
+        <span id="fb-status-text">กำลังเชื่อมต่อ...</span>
+      </span>
+      <div class="topbar-spacer"></div>
+      <button class="event-switch" id="event-switch-btn" title="จัดการกิจกรรม">
+        <span class="label">กิจกรรม</span>
+        <span class="name" id="current-event-name">—</span>
+      </button>
+      <button class="theme-toggle" id="theme-toggle" title="สลับโหมดสว่าง/มืด">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <h1>แดชบอร์ด<span class="accent">ส่งมอบเสื้อผ้า</span></h1>
+        <div class="subtitle" id="event-subtitle">เลือกหรือสร้างกิจกรรมเพื่อเริ่มต้นใช้งาน</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn btn-ghost" id="btn-export-excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Excel
+        </button>
+        <button class="btn btn-ghost" id="btn-export-pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF
+        </button>
+        <button class="btn btn-primary" id="btn-upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          อัปโหลด
+        </button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="stat accent" data-status-filter="all">
+        <div class="stat-label"><span>ทั้งหมด</span><span class="filter-mark">กำลังดู</span></div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-sub">คลิกเพื่อแสดงทั้งหมด</div>
+        <div class="stat-deco">001</div>
+      </div>
+      <div class="stat success" data-status-filter="received">
+        <div class="stat-label"><span>รับแล้ว</span><span class="filter-mark">กำลังดู</span></div>
+        <div class="stat-value" id="stat-received">0</div>
+        <div class="stat-sub" id="stat-received-pct">0% ของทั้งหมด</div>
+        <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+        <div class="stat-deco">✓</div>
+      </div>
+      <div class="stat pending" data-status-filter="pending">
+        <div class="stat-label"><span>ยังไม่รับ</span><span class="filter-mark">กำลังดู</span></div>
+        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-sub" id="stat-pending-pct">0% ของทั้งหมด</div>
+        <div class="stat-deco">○</div>
+      </div>
+      <div class="stat" data-status-filter="incomplete">
+        <div class="stat-label"><span>ข้อมูลไม่ครบ</span><span class="filter-mark">กำลังดู</span></div>
+        <div class="stat-value" style="color:var(--warn);" id="stat-incomplete">0</div>
+        <div class="stat-sub">คลิกเพื่อกรอง</div>
+        <div class="stat-deco">!</div>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <span class="filter-label">กรอง:</span>
+      <button class="filter-pill active" data-purchase-filter="all">ทุกประเภท <span class="count" id="cnt-purchase-all">0</span></button>
+      <button class="filter-pill" data-purchase-filter="set">เซ็ต <span class="count" id="cnt-purchase-set">0</span></button>
+      <button class="filter-pill" data-purchase-filter="separate">ซื้อแยก <span class="count" id="cnt-purchase-separate">0</span></button>
+      <select class="filter-select" id="faculty-filter" title="กรองตามคณะ"><option value="">ทุกคณะ</option></select>
+      <select class="filter-select" id="major-filter" title="กรองตามสาขา"><option value="">ทุกสาขา</option></select>
+      <button class="filter-clear" id="filter-clear" disabled>ล้างตัวกรอง</button>
+    </div>
+
+    <div class="layout">
+      <section class="card">
+        <div class="card-head">
+          <h2>ค้นหา &amp; ส่งมอบ</h2>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);"><span id="results-count">0</span> รายการ</div>
+        </div>
+        <div class="card-body">
+          <div class="search-wrap">
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <input type="text" class="search-input" id="search-input" placeholder="พิมพ์ชื่อ คณะ หรือสาขา เพื่อค้นหา..." autocomplete="off" />
+            <button class="search-clear" id="search-clear" title="ล้าง"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <div class="results-list" id="results-list">
+            <div class="empty-state"><div class="loader"></div><h3 style="margin-top:14px;">กำลังโหลด...</h3></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-head">
+          <h2>คลังขนาด</h2>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);">เหลือ / ทั้งหมด</div>
+        </div>
+        <div class="card-body" id="inventory-body">
+          <div class="purchase-summary" id="purchase-summary">
+            <div class="ps-item set"><div class="ps-label">ซื้อเซ็ต</div><div class="ps-count" id="ps-set">0</div></div>
+            <div class="ps-item separate"><div class="ps-label">ซื้อแยก</div><div class="ps-count" id="ps-separate">0</div></div>
+          </div>
+          <div class="matrix-section" id="shirt-section">
+            <h3>เสื้อ <span class="total" id="shirt-total">0</span></h3>
+            <div class="matrix-grid" id="shirt-matrix"><div style="grid-column:1/-1;text-align:center;color:var(--ink-muted);font-size:13px;padding:20px 0;">ไม่มีข้อมูล</div></div>
+          </div>
+          <div class="matrix-section" id="pants-section">
+            <h3>กางเกง <span class="total" id="pants-total">0</span></h3>
+            <div class="matrix-grid" id="pants-matrix"><div style="grid-column:1/-1;text-align:center;color:var(--ink-muted);font-size:13px;padding:20px 0;">ไม่มีข้อมูล</div></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- USER NAME MODAL -->
+<div class="modal-back" id="user-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h2>👋 ระบุชื่อผู้ใช้งาน</h2>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--ink-soft);margin-bottom:14px;font-size:13px;">ใส่ชื่อของคุณ เพื่อให้ทีมงานคนอื่นเห็นว่าใครเป็นคนกดยืนยันการรับเสื้อแต่ละรายการ</p>
+      <div class="form-group">
+        <label>ชื่อของคุณ (เห็นเฉพาะในทีม)</label>
+        <input type="text" id="user-name-input" placeholder="เช่น สมชาย, จุดที่ 1, A" maxlength="20" />
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-primary" id="btn-save-user">บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-back" id="event-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>จัดการกิจกรรม</h2>
+      <button class="close" data-close="event-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="user-name-bar" id="user-name-bar">
+        <div class="avatar" id="user-avatar">?</div>
+        <div class="name">คุณคือ: <span id="user-name-display">ยังไม่ได้ตั้งชื่อ</span></div>
+        <button id="btn-change-user">เปลี่ยน</button>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label>สร้างกิจกรรมใหม่</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="new-event-name" placeholder="เช่น รับเสื้อกิจกรรม SUS 2026" />
+          <button class="btn btn-primary" id="btn-create-event">สร้าง</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <label style="font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:8px;display:block;">รายการกิจกรรม (sync ทุกเครื่อง)</label>
+      <div class="event-list" id="event-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-back" id="upload-modal">
+  <div class="modal" style="max-width: 580px;">
+    <div class="modal-head">
+      <h2>อัปโหลดข้อมูลผู้รับเสื้อ</h2>
+      <button class="close" data-close="upload-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-soft);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6;">
+        <strong style="color:var(--ink);">⚡ Cloud Sync:</strong> ข้อมูลจะถูกอัปโหลดไป Firebase และทุกเครื่องเห็นทันที<br/>
+        <strong style="color:var(--ink);">รองรับโครงสร้างไฟล์ฟอร์ม:</strong> 2 ชุดคอลัมน์ตามประเภทการซื้อ (เซ็ต/แยก)<br/>
+        <strong style="color:var(--ink);">ตัดสัญลักษณ์อัตโนมัติ:</strong> <code style="background:var(--bg-elevated);padding:0 4px;border-radius:3px;font-family:var(--font-mono);font-size:11px;">. # _ * **</code>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <span class="icon">📁</span>
+        <strong>คลิกเพื่อเลือกไฟล์ หรือลากมาวาง</strong>
+        <div class="hint">รองรับ Excel (.xlsx, .xls) และ CSV</div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
+      </div>
+      <div id="import-summary-area"></div>
+      <div id="upload-options" style="display:none;margin-top:14px;">
+        <div style="font-size:13px;color:var(--ink-soft);margin-bottom:10px;">เลือกวิธีการนำเข้า:</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" id="btn-import-replace" style="flex:1;justify-content:center;">แทนที่ทั้งหมด</button>
+          <button class="btn btn-primary" id="btn-import-append" style="flex:1;justify-content:center;">เพิ่มเข้าไป</button>
+        </div>
+      </div>
+      <div id="import-progress-area" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-back" id="confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h2 id="confirm-title">ยืนยันการดำเนินการ</h2>
+      <button class="close" data-close="confirm-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="color:var(--ink-soft);margin-bottom:18px;">คุณแน่ใจหรือไม่?</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost" data-close="confirm-modal">ยกเลิก</button>
+        <button class="btn btn-primary" id="btn-confirm-action">ตกลง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-area"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+  onSnapshot, query, orderBy, writeBatch, serverTimestamp, addDoc,
+  enableIndexedDbPersistence, deleteDoc as fbDeleteDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ============== FIREBASE CONFIG ============== */
+// FIREBASE_CONFIG_HERE - แทนที่ object นี้ด้วย config ของคุณจาก Firebase Console
+// ดูคู่มือใน SETUP_FIREBASE.md
+const firebaseConfig = {
+  apiKey: "AIzaSyDQX-5ht4JQyt3N_CYMIxqpYqS2uk0_Fxk",
+  authDomain: "psu-sus-handover.firebaseapp.com",
+  projectId: "psu-sus-handover",
+  storageBucket: "psu-sus-handover.firebasestorage.app",
+  messagingSenderId: "878028525655",
+  appId: "1:878028525655:web:1b88ab4e013f8517add312",
+  measurementId: "G-XBJZ5T6BZN"
+};
+
+// Check if config is filled in
+function isConfigValid() {
+  return firebaseConfig.apiKey &&
+         !firebaseConfig.apiKey.startsWith('PASTE_') &&
+         firebaseConfig.projectId &&
+         !firebaseConfig.projectId.startsWith('PASTE_');
+}
+
+let app, db;
+if (isConfigValid()) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    // Enable offline persistence so data is cached locally too
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Persistence: Multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        console.warn('Persistence: Browser does not support');
+      }
+    });
+  } catch (err) {
+    console.error('Firebase init error:', err);
+  }
+} else {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('fb-setup-needed').classList.add('show');
+}
+
+/* ============== STATE ============== */
+const state = {
+  user: null,
+  currentEventId: null,
+  events: [],
+  recipients: [],
+  filtered: [],
+  searchQuery: '',
+  filters: { status: 'all', purchaseType: 'all', faculty: '', major: '' },
+  unsubRecipients: null,
+  unsubEvents: null,
+  isConnected: false,
+};
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+const nowISO = () => new Date().toISOString();
+const fmtDate = iso => !iso ? '—' : new Date(iso).toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' });
+const fmtTime = iso => !iso ? '—' : new Date(iso).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+const fmtDateTime = iso => !iso ? '—' : fmtDate(iso) + ' ' + fmtTime(iso);
+const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function highlightMatch(text, query) {
+  if (!query) return escapeHTML(text);
+  const safe = escapeHTML(text);
+  try {
+    const escQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return safe.replace(new RegExp('(' + escQ + ')', 'ig'), '<mark>$1</mark>');
+  } catch { return safe; }
+}
+
+function toast(msg, type='info') {
+  const area = $('#toast-area');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icons = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    realtime: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8"/><polyline points="4 8 4 12 8 12"/><polyline points="20 16 20 12 16 12"/></svg>'
+  };
+  el.innerHTML = (icons[type] || icons.info) + '<span>' + escapeHTML(msg) + '</span>';
+  area.appendChild(el);
+  setTimeout(() => el.remove(), 3400);
+}
+
+function updateConnectionStatus(status) {
+  const el = $('#fb-status');
+  const txt = $('#fb-status-text');
+  el.className = 'fb-status ' + status;
+  if (status === 'connected') { txt.textContent = '⚡ Cloud Synced'; state.isConnected = true; }
+  else if (status === 'error') { txt.textContent = 'เชื่อมต่อล้มเหลว'; state.isConnected = false; }
+  else if (status === 'offline') { txt.textContent = 'Offline'; state.isConnected = false; }
+}
+
+// Listen to online/offline
+window.addEventListener('online', () => updateConnectionStatus('connected'));
+window.addEventListener('offline', () => updateConnectionStatus('offline'));
+
+function setupIntro() {
+  $('#btn-enter').addEventListener('click', () => {
+    $('#intro').classList.add('hide');
+    setTimeout(() => {
+      $('#intro').style.display = 'none';
+      $('#app').classList.add('ready');
+    }, 700);
+  });
+}
+
+/* ============== THEME (localStorage — per device) ============== */
+function initTheme() {
+  const stored = localStorage.getItem('psu-sus-theme');
+  const theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+}
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('psu-sus-theme', next);
+}
+
+/* ============== USER NAME (localStorage — per device) ============== */
+function loadUserName() {
+  state.user = localStorage.getItem('psu-sus-username') || '';
+  updateUserDisplay();
+}
+function saveUserName(name) {
+  state.user = name.trim();
+  if (state.user) localStorage.setItem('psu-sus-username', state.user);
+  updateUserDisplay();
+}
+function updateUserDisplay() {
+  const nameEl = $('#user-name-display');
+  const avatarEl = $('#user-avatar');
+  if (state.user) {
+    nameEl.textContent = state.user;
+    avatarEl.textContent = state.user.charAt(0).toUpperCase();
+  } else {
+    nameEl.textContent = 'ยังไม่ได้ตั้งชื่อ';
+    avatarEl.textContent = '?';
+  }
+}
+function requireUserName() {
+  if (!state.user) {
+    openModal('user-modal');
+    return false;
+  }
+  return true;
+}
+
+/* ============== FIRESTORE — EVENTS ============== */
+async function subscribeEvents() {
+  if (state.unsubEvents) state.unsubEvents();
+  const q = query(collection(db, 'events'), orderBy('createdAt', 'desc'));
+  state.unsubEvents = onSnapshot(q, (snap) => {
+    state.events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateConnectionStatus('connected');
+    // If current event was deleted, switch to another
+    if (state.currentEventId && !state.events.some(e => e.id === state.currentEventId)) {
+      state.currentEventId = state.events[0]?.id || null;
+      localStorage.setItem('psu-sus-currentEventId', state.currentEventId || '');
+      subscribeRecipients();
+    }
+    // First-time: pick last used or first event
+    if (!state.currentEventId && state.events.length) {
+      const last = localStorage.getItem('psu-sus-currentEventId');
+      state.currentEventId = (last && state.events.some(e => e.id === last)) ? last : state.events[0].id;
+      localStorage.setItem('psu-sus-currentEventId', state.currentEventId);
+      subscribeRecipients();
+    }
+    renderEventInfo();
+    renderEventList();
+  }, (err) => {
+    console.error('Events subscription error:', err);
+    updateConnectionStatus('error');
+    toast('เชื่อมต่อ Firestore ล้มเหลว — ตรวจสอบ config', 'error');
+  });
+}
+
+async function createEvent(name) {
+  if (!name?.trim()) { toast('กรุณาระบุชื่อกิจกรรม', 'warn'); return null; }
+  try {
+    const docRef = await addDoc(collection(db, 'events'), {
+      name: name.trim(),
+      createdAt: nowISO(),
+      createdBy: state.user || 'unknown',
+    });
+    state.currentEventId = docRef.id;
+    localStorage.setItem('psu-sus-currentEventId', docRef.id);
+    subscribeRecipients();
+    toast('สร้างกิจกรรมเรียบร้อย', 'success');
+    return { id: docRef.id, name };
+  } catch (err) {
+    console.error(err);
+    toast('สร้างกิจกรรมล้มเหลว: ' + err.message, 'error');
+    return null;
+  }
+}
+
+async function deleteEvent(id) {
+  try {
+    // Delete all recipients first (in batches of 500)
+    const recipSnap = await getDocs(collection(db, 'events', id, 'recipients'));
+    const docs = recipSnap.docs;
+    for (let i = 0; i < docs.length; i += 500) {
+      const batch = writeBatch(db);
+      docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    await deleteDoc(doc(db, 'events', id));
+    toast('ลบกิจกรรมเรียบร้อย', 'success');
+  } catch (err) {
+    console.error(err);
+    toast('ลบกิจกรรมล้มเหลว: ' + err.message, 'error');
+  }
+}
+
+async function switchEvent(id) {
+  state.currentEventId = id;
+  localStorage.setItem('psu-sus-currentEventId', id);
+  resetFilters();
+  subscribeRecipients();
+  renderEventInfo();
+}
+
+/* ============== FIRESTORE — RECIPIENTS ============== */
+function subscribeRecipients() {
+  if (state.unsubRecipients) state.unsubRecipients();
+  if (!state.currentEventId) {
+    state.recipients = [];
+    applyFilters();
+    renderAll();
+    return;
+  }
+  // Show loading
+  $('#results-list').innerHTML = `<div class="empty-state"><div class="loader"></div><h3 style="margin-top:14px;">กำลังโหลดข้อมูล...</h3></div>`;
+
+  const ref = collection(db, 'events', state.currentEventId, 'recipients');
+  state.unsubRecipients = onSnapshot(ref, (snap) => {
+    const prevIds = new Set(state.recipients.map(r => r.id));
+    state.recipients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Detect "just updated" recipients for flash animation
+    snap.docChanges().forEach(change => {
+      if (change.type === 'modified' && prevIds.has(change.doc.id)) {
+        // Mark for flash animation in next render
+        const r = state.recipients.find(x => x.id === change.doc.id);
+        if (r) r._justUpdated = true;
+      }
+    });
+
+    updateConnectionStatus('connected');
+    applyFilters();
+    renderAll();
+  }, (err) => {
+    console.error('Recipients subscription error:', err);
+    updateConnectionStatus('error');
+  });
+}
+
+async function setStatus(id, status) {
+  const r = state.recipients.find(x => x.id === id);
+  if (!r) return;
+  try {
+    const ref = doc(db, 'events', state.currentEventId, 'recipients', id);
+    const update = {
+      status,
+      updatedAt: nowISO(),
+      updatedBy: state.user || 'unknown',
+    };
+    if (status === 'received') {
+      update.receivedAt = nowISO();
+      update.receivedBy = state.user || 'unknown';
+    } else {
+      update.receivedAt = null;
+      update.receivedBy = null;
+    }
+    // Optimistic UI update
+    Object.assign(r, update);
+    applyFilters();
+    renderAll();
+    // Send to Firestore
+    await setDoc(ref, update, { merge: true });
+  } catch (err) {
+    console.error(err);
+    toast('อัปเดตล้มเหลว: ' + err.message, 'error');
+  }
+}
+
+/* ============== CLEANERS — V6 logic ============== */
+function cleanSize(raw) {
+  if (raw === null || raw === undefined) return '';
+  let s = String(raw).trim();
+  if (!s) return '';
+  s = s.replace(/[.#_*]+/g, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/^[\s\-:|/\\]+|[\s\-:|/\\]+$/g, '');
+  s = s.replace(/^(ไซส์|ขนาด|size)[:\s]*/i, '');
+  return s.toUpperCase().trim();
+}
+
+function cleanQuantity(raw, defaultVal=1) {
+  if (raw === null || raw === undefined || raw === '') return defaultVal;
+  if (typeof raw === 'number') {
+    const n = Math.floor(raw);
+    return (n > 0 && n <= 50) ? n : defaultVal;
+  }
+  const s = String(raw).trim();
+  if (!s) return defaultVal;
+  const startMatch = s.match(/^\s*(\d+)/);
+  if (startMatch) {
+    const n = parseInt(startMatch[1], 10);
+    if (n > 0 && n <= 50) return n;
+  }
+  if (/^(set|ชุด|เซ็ต|order|รหัส)/i.test(s)) return defaultVal;
+  const anyMatch = s.match(/\d+/);
+  if (!anyMatch) return defaultVal;
+  const n = parseInt(anyMatch[0], 10);
+  return (n > 0 && n <= 50) ? n : defaultVal;
+}
+
+function cleanText(raw) {
+  if (raw === null || raw === undefined) return '';
+  let s = String(raw).trim();
+  if (!s) return '';
+  s = s.replace(/^[\s.#_*\-:|/\\]+|[\s.#_*\-:|/\\]+$/g, '');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/* ============== COLUMN DETECTION (V6) ============== */
+function normalizeKey(k) {
+  return String(k ?? '').toLowerCase().replace(/[\s_\-./()\[\]:#*\n]/g,'').trim();
+}
+
+function smartDetectMapping(headers) {
+  const map = {
+    name: -1, code: -1, faculty: -1, major: -1, purchaseType: -1,
+    shirtTypeSet: -1, shirtSizeSet: -1, pantsSizeSet: -1, qtySet: -1,
+    shirtTypeSep: -1, shirtSizeSep: -1, pantsSizeSep: -1, qtyShirtSep: -1, qtyPantsSep: -1,
+    qtyGeneral: -1, status: -1, phone: -1
+  };
+  const NAME_KW = ['ชื่อ','name','ผู้รับ'];
+  const CODE_KW = ['รหัส','id','code'];
+  const FAC_KW = ['คณะ','faculty','สังกัด'];
+  const MAJOR_KW = ['สาขา','major','ภาค'];
+  const PHONE_KW = ['เบอร์','phone','tel','โทร'];
+  const PURCHASE_KW = ['ประเภทการซื้อ','การซื้อ'];
+  const SHIRT_TYPE_KW = ['ประเภทเสื้อ','แบบเสื้อ','ชนิดเสื้อ'];
+  const SHIRT_SIZE_KW = ['ไซส์เสื้อ','ขนาดเสื้อ','sizeเสื้อ'];
+  const PANTS_SIZE_KW = ['ไซส์กางเกง','ไซส์างเกง','ขนาดกางเกง','sizeกางเกง'];
+  const SHIRT_QTY_KW = ['จำนวนเสื้อ','จํานวนเสื้อ'];
+  const PANTS_QTY_KW = ['จำนวนกางเกง','จํานวนกางเกง'];
+  const SET_QTY_KW = ['จำนวนเซ็ต','จํานวนเซ็ต','จํานวนชุด','จำนวนชุด'];
+  const STATUS_KW = ['สถานะ','status'];
+
+  const matches = (h, kws) => {
+    const n = normalizeKey(h);
+    return kws.some(k => n.includes(normalizeKey(k)));
+  };
+
+  headers.forEach((h, i) => {
+    if (map.name === -1 && matches(h, NAME_KW) && !matches(h, ['ผู้สั่ง','ลำดับ'])) map.name = i;
+    if (map.code === -1 && matches(h, CODE_KW)) map.code = i;
+    if (map.faculty === -1 && matches(h, FAC_KW)) map.faculty = i;
+    if (map.major === -1 && matches(h, MAJOR_KW)) map.major = i;
+    if (map.phone === -1 && matches(h, PHONE_KW)) map.phone = i;
+    if (map.purchaseType === -1 && matches(h, PURCHASE_KW)) map.purchaseType = i;
+    if (map.status === -1 && matches(h, STATUS_KW)) map.status = i;
+  });
+
+  const shirtTypeCols = [], shirtSizeCols = [], pantsSizeCols = [];
+  const shirtQtyCols = [], pantsQtyCols = [], setQtyCols = [];
+  headers.forEach((h, i) => {
+    if (matches(h, SHIRT_TYPE_KW) && !matches(h, ['ขนาด','ไซส์','size','จำนวน'])) shirtTypeCols.push(i);
+    if (matches(h, SHIRT_SIZE_KW)) shirtSizeCols.push(i);
+    if (matches(h, PANTS_SIZE_KW)) pantsSizeCols.push(i);
+    if (matches(h, SHIRT_QTY_KW)) shirtQtyCols.push(i);
+    if (matches(h, PANTS_QTY_KW)) pantsQtyCols.push(i);
+    if (matches(h, SET_QTY_KW)) setQtyCols.push(i);
+  });
+
+  if (shirtTypeCols.length >= 1) map.shirtTypeSet = shirtTypeCols[0];
+  if (shirtTypeCols.length >= 2) map.shirtTypeSep = shirtTypeCols[1];
+  if (shirtSizeCols.length >= 1) map.shirtSizeSet = shirtSizeCols[0];
+  if (shirtSizeCols.length >= 2) map.shirtSizeSep = shirtSizeCols[1];
+  if (pantsSizeCols.length >= 1) map.pantsSizeSet = pantsSizeCols[0];
+  if (pantsSizeCols.length >= 2) map.pantsSizeSep = pantsSizeCols[1];
+  if (setQtyCols.length >= 1) map.qtySet = setQtyCols[0];
+  if (shirtQtyCols.length >= 1) map.qtyShirtSep = shirtQtyCols[0];
+  if (pantsQtyCols.length >= 1) map.qtyPantsSep = pantsQtyCols[0];
+
+  return map;
+}
+
+function classifyPurchaseType(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (!s) return 'unknown';
+  if (s.includes('เซ็ต') || s.includes('ทั้งชุด') || s.includes('set') || s.includes('ครบ')) return 'set';
+  if (s.includes('แยก') || s.includes('separate')) return 'separate';
+  return 'unknown';
+}
+
+function parseStatus(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (['received','รับแล้ว','รับ','done','yes','y','1','true','ส่งแล้ว','จ่ายแล้ว'].includes(s)) return 'received';
+  if (s.includes('รับแล้ว')) return 'received';
+  return 'pending';
+}
+
+let parseContext = null;
+let pendingImport = null;
+
+function parseFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates: true });
+        let sheetName = wb.SheetNames[0];
+        for (const sn of wb.SheetNames) {
+          const sheet = wb.Sheets[sn];
+          const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+          const rowCount = range.e.r - range.s.r + 1;
+          const colCount = range.e.c - range.s.c + 1;
+          if (rowCount > 10 && colCount > 5) { sheetName = sn; break; }
+        }
+        const sheet = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'', raw: false });
+        if (!rows.length) throw new Error('ไฟล์ว่างเปล่า');
+
+        let bestRow = 0, bestScore = -1;
+        const keywords = ['name','ชื่อ','คณะ','faculty','สาขา','major','เสื้อ','shirt','กางเกง','pants','ขนาด','size','รหัส','id','จำนวน','qty','สถานะ','status','ประเภท','type'];
+        for (let i = 0; i < Math.min(rows.length, 8); i++) {
+          const row = rows[i];
+          const nonEmpty = row.filter(c => String(c).trim()).length;
+          if (nonEmpty < 3) continue;
+          let kwHits = 0;
+          row.forEach(c => {
+            const norm = normalizeKey(c);
+            if (keywords.some(k => norm.includes(normalizeKey(k)))) kwHits++;
+          });
+          const score = nonEmpty + kwHits * 5;
+          if (score > bestScore) { bestScore = score; bestRow = i; }
+        }
+        const headers = rows[bestRow].map(h => String(h).trim());
+        const dataRows = rows.slice(bestRow + 1).filter(r => r.some(c => String(c).trim()));
+        const map = smartDetectMapping(headers);
+        resolve({ headers, rows: dataRows, map, fileName: file.name, sheetName });
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function buildRecipientsFromContext(ctx) {
+  const { rows, map } = ctx;
+  const recipients = [];
+  for (const row of rows) {
+    const get = (idx) => idx >= 0 ? row[idx] : '';
+    const name = cleanText(get(map.name));
+    if (!name) continue;
+
+    const code = cleanText(get(map.code));
+    const faculty = cleanText(get(map.faculty));
+    const major = cleanText(get(map.major));
+    const phone = cleanText(get(map.phone));
+    const purchaseRaw = cleanText(get(map.purchaseType));
+    const purchaseType = classifyPurchaseType(purchaseRaw);
+
+    let shirtSize = '', pantsSize = '', shirtType = '';
+    let shirtQty = 0, pantsQty = 0;
+
+    if (purchaseType === 'set') {
+      shirtSize = cleanSize(get(map.shirtSizeSet));
+      pantsSize = cleanSize(get(map.pantsSizeSet));
+      shirtType = cleanText(get(map.shirtTypeSet));
+      const setQty = cleanQuantity(get(map.qtySet), 1);
+      shirtQty = shirtSize ? setQty : 0;
+      pantsQty = pantsSize ? setQty : 0;
+    } else if (purchaseType === 'separate') {
+      shirtSize = cleanSize(get(map.shirtSizeSep));
+      pantsSize = cleanSize(get(map.pantsSizeSep));
+      shirtType = cleanText(get(map.shirtTypeSep));
+      shirtQty = shirtSize ? cleanQuantity(get(map.qtyShirtSep), 1) : 0;
+      pantsQty = pantsSize ? cleanQuantity(get(map.qtyPantsSep), 1) : 0;
+    } else {
+      const setShirt = cleanSize(get(map.shirtSizeSet));
+      const setPants = cleanSize(get(map.pantsSizeSet));
+      const sepShirt = cleanSize(get(map.shirtSizeSep));
+      const sepPants = cleanSize(get(map.pantsSizeSep));
+      shirtSize = setShirt || sepShirt;
+      pantsSize = setPants || sepPants;
+      shirtType = cleanText(get(map.shirtTypeSet)) || cleanText(get(map.shirtTypeSep));
+      if (setShirt || setPants) {
+        const q = cleanQuantity(get(map.qtySet), 1);
+        shirtQty = shirtSize ? q : 0;
+        pantsQty = pantsSize ? q : 0;
+      } else {
+        shirtQty = shirtSize ? cleanQuantity(get(map.qtyShirtSep), 1) : 0;
+        pantsQty = pantsSize ? cleanQuantity(get(map.qtyPantsSep), 1) : 0;
+      }
+    }
+
+    let displayType;
+    if (shirtSize && pantsSize) displayType = 'set';
+    else if (shirtSize || pantsSize) displayType = 'separate';
+    else displayType = 'empty';
+
+    const isIncomplete = (purchaseType === 'set' && (!shirtSize || !pantsSize)) ||
+                        (purchaseType === 'separate' && !shirtSize && !pantsSize) ||
+                        displayType === 'empty';
+    const status = parseStatus(get(map.status));
+
+    recipients.push({
+      name, code, faculty, major, phone,
+      shirtSize, shirtQty, shirtType,
+      pantsSize, pantsQty,
+      purchaseTypeRaw: purchaseRaw,
+      purchaseType: displayType,
+      isIncomplete,
+      status,
+      receivedAt: status === 'received' ? nowISO() : null,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    });
+  }
+  return recipients;
+}
+
+function renderImportSummary() {
+  const ctx = parseContext;
+  if (!ctx) { $('#import-summary-area').innerHTML = ''; return; }
+  const recs = buildRecipientsFromContext(ctx);
+  pendingImport = recs;
+
+  const setCnt = recs.filter(r => r.purchaseType === 'set').length;
+  const sepCnt = recs.filter(r => r.purchaseType === 'separate').length;
+  const emptyCnt = recs.filter(r => r.purchaseType === 'empty').length;
+  const incompleteCnt = recs.filter(r => r.isIncomplete).length;
+
+  const shirtCounts = {}, pantsCounts = {};
+  recs.forEach(r => {
+    if (r.shirtSize && r.shirtQty > 0) shirtCounts[r.shirtSize] = (shirtCounts[r.shirtSize] || 0) + r.shirtQty;
+    if (r.pantsSize && r.pantsQty > 0) pantsCounts[r.pantsSize] = (pantsCounts[r.pantsSize] || 0) + r.pantsQty;
+  });
+  const totalShirts = Object.values(shirtCounts).reduce((a,b)=>a+b, 0);
+  const totalPants = Object.values(pantsCounts).reduce((a,b)=>a+b, 0);
+  const topShirts = Object.entries(shirtCounts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+  let html = `<div class="import-summary">
+    <strong>📋 พบข้อมูล ${recs.length} รายการ</strong><br/>
+    ซื้อเซ็ต: ${setCnt} · ซื้อแยก: ${sepCnt}${emptyCnt ? ' · ไม่ระบุ: ' + emptyCnt : ''}<br/>
+    <strong>ยอดรวม:</strong> เสื้อ ${totalShirts} ตัว · กางเกง ${totalPants} ตัว`;
+  if (topShirts.length) {
+    html += '<br/><strong>ไซส์เสื้อยอดนิยม:</strong> ' + topShirts.map(([k,v]) => `${k} (${v})`).join(' · ');
+  }
+  if (incompleteCnt > 0) {
+    html += `<br/><span style="color:var(--warn);">⚠ ${incompleteCnt} คน มีข้อมูลไม่ครบ</span>`;
+  }
+  html += `<br/><span style="color:var(--info);">⚡ จะอัปโหลดไป Cloud · ทุกเครื่องเห็นทันที</span>`;
+  html += '</div>';
+  $('#import-summary-area').innerHTML = html;
+  $('#upload-options').style.display = recs.length ? 'block' : 'none';
+}
+
+async function handleFile(file) {
+  if (!state.currentEventId) { toast('กรุณาสร้างหรือเลือกกิจกรรมก่อน', 'warn'); return; }
+  if (!requireUserName()) return;
+  const validExt = ['.xlsx','.xls','.csv'];
+  if (!validExt.some(e => file.name.toLowerCase().endsWith(e))) {
+    toast('รองรับเฉพาะ .xlsx, .xls, .csv', 'error'); return;
+  }
+  try {
+    const ctx = await parseFile(file);
+    parseContext = ctx;
+    if (ctx.map.name === -1) { toast('ไม่พบคอลัมน์ "ชื่อ" ในไฟล์', 'error'); return; }
+    renderImportSummary();
+    toast(`อ่านไฟล์สำเร็จ พบ ${pendingImport?.length || 0} รายการ`, 'success');
+  } catch (err) {
+    toast(err.message || 'ไม่สามารถอ่านไฟล์ได้', 'error');
+  }
+}
+
+async function commitImport(mode) {
+  if (!pendingImport?.length) return;
+  const total = pendingImport.length;
+  $('#upload-options').style.display = 'none';
+  $('#import-progress-area').style.display = 'block';
+  $('#import-progress-area').innerHTML = `
+    <div class="import-progress">
+      <div class="label"><span>⚡ กำลังอัปโหลดไป Cloud...</span><span id="prog-pct">0%</span></div>
+      <div class="bar"><div id="prog-bar" style="width:0%"></div></div>
+      <div class="hint" id="prog-hint">เตรียมข้อมูล...</div>
+    </div>`;
+
+  try {
+    const recipColl = collection(db, 'events', state.currentEventId, 'recipients');
+
+    // If replace, delete all existing first
+    if (mode === 'replace') {
+      $('#prog-hint').textContent = 'กำลังลบข้อมูลเดิม...';
+      const existingSnap = await getDocs(recipColl);
+      const existingDocs = existingSnap.docs;
+      for (let i = 0; i < existingDocs.length; i += 500) {
+        const batch = writeBatch(db);
+        existingDocs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // Batch insert (max 500 per batch)
+    const BATCH_SIZE = 500;
+    let uploaded = 0;
+    for (let i = 0; i < pendingImport.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const slice = pendingImport.slice(i, i + BATCH_SIZE);
+      slice.forEach(r => {
+        const docRef = doc(recipColl);
+        batch.set(docRef, {
+          ...r,
+          importedBy: state.user || 'unknown',
+          importedAt: nowISO(),
+        });
+      });
+      await batch.commit();
+      uploaded += slice.length;
+      const pct = Math.round((uploaded / total) * 100);
+      $('#prog-bar').style.width = pct + '%';
+      $('#prog-pct').textContent = pct + '%';
+      $('#prog-hint').textContent = `อัปโหลดแล้ว ${uploaded} / ${total}`;
+    }
+
+    toast(`อัปโหลด ${total} รายการสำเร็จ ✓`, 'success');
+    pendingImport = null; parseContext = null;
+    closeModal('upload-modal');
+    $('#upload-options').style.display = 'none';
+    $('#import-summary-area').innerHTML = '';
+    $('#import-progress-area').style.display = 'none';
+    $('#file-input').value = '';
+    resetFilters();
+  } catch (err) {
+    console.error(err);
+    toast('อัปโหลดล้มเหลว: ' + err.message, 'error');
+    $('#import-progress-area').style.display = 'none';
+    $('#upload-options').style.display = 'block';
+  }
+}
+
+/* ============== FILTERS ============== */
+function resetFilters() {
+  state.filters = { status:'all', purchaseType:'all', faculty:'', major:'' };
+  state.searchQuery = '';
+  if ($('#search-input')) $('#search-input').value = '';
+  if ($('#search-clear')) $('#search-clear').classList.remove('show');
+}
+
+function applyFilters() {
+  let pool = state.recipients;
+  if (state.filters.status === 'received' || state.filters.status === 'pending') {
+    pool = pool.filter(r => r.status === state.filters.status);
+  } else if (state.filters.status === 'incomplete') {
+    pool = pool.filter(r => r.isIncomplete);
+  }
+  if (state.filters.purchaseType !== 'all') pool = pool.filter(r => r.purchaseType === state.filters.purchaseType);
+  if (state.filters.faculty) pool = pool.filter(r => r.faculty === state.filters.faculty);
+  if (state.filters.major) pool = pool.filter(r => r.major === state.filters.major);
+
+  const q = state.searchQuery.trim();
+  if (q) {
+    const localFuse = new Fuse(pool, {
+      keys: [
+        { name: 'name', weight: 0.5 },
+        { name: 'code', weight: 0.15 },
+        { name: 'faculty', weight: 0.2 },
+        { name: 'major', weight: 0.15 },
+      ],
+      threshold: 0.4, ignoreLocation: true, minMatchCharLength: 1,
+    });
+    pool = localFuse.search(q).map(r => r.item);
+  } else {
+    pool = [...pool].sort((a,b) => a.name.localeCompare(b.name, 'th'));
+  }
+  state.filtered = pool;
+}
+
+function isAnyFilterActive() {
+  return state.filters.status !== 'all' || state.filters.purchaseType !== 'all'
+    || state.filters.faculty !== '' || state.filters.major !== ''
+    || state.searchQuery.trim() !== '';
+}
+
+/* ============== RENDER ============== */
+function renderEventInfo() {
+  const ev = state.events.find(e => e.id === state.currentEventId);
+  $('#current-event-name').textContent = ev?.name || 'ยังไม่มีกิจกรรม';
+  $('#event-subtitle').textContent = ev
+    ? `กิจกรรม: ${ev.name} · สร้างเมื่อ ${fmtDate(ev.createdAt)}`
+    : 'เลือกหรือสร้างกิจกรรมเพื่อเริ่มต้นใช้งาน';
+}
+
+function renderStats() {
+  const total = state.recipients.length;
+  const received = state.recipients.filter(r => r.status === 'received').length;
+  const pending = total - received;
+  const incomplete = state.recipients.filter(r => r.isIncomplete).length;
+  $('#stat-total').textContent = total;
+  $('#stat-received').textContent = received;
+  $('#stat-pending').textContent = pending;
+  $('#stat-incomplete').textContent = incomplete;
+  const pctR = total ? Math.round(received/total*100) : 0;
+  const pctP = total ? Math.round(pending/total*100) : 0;
+  $('#stat-received-pct').textContent = pctR + '% ของทั้งหมด';
+  $('#stat-pending-pct').textContent = pctP + '% ของทั้งหมด';
+  $('#progress-fill').style.width = pctR + '%';
+  $$('.stat[data-status-filter]').forEach(s => {
+    s.classList.toggle('is-active', s.dataset.statusFilter === state.filters.status);
+  });
+}
+
+function renderFilterBar() {
+  let baseForCounts;
+  if (state.filters.status === 'received' || state.filters.status === 'pending') {
+    baseForCounts = state.recipients.filter(r => r.status === state.filters.status);
+  } else if (state.filters.status === 'incomplete') {
+    baseForCounts = state.recipients.filter(r => r.isIncomplete);
+  } else {
+    baseForCounts = state.recipients;
+  }
+  $('#cnt-purchase-all').textContent = baseForCounts.length;
+  $('#cnt-purchase-set').textContent = baseForCounts.filter(r => r.purchaseType === 'set').length;
+  $('#cnt-purchase-separate').textContent = baseForCounts.filter(r => r.purchaseType === 'separate').length;
+  $$('.filter-pill[data-purchase-filter]').forEach(p => {
+    p.classList.toggle('active', p.dataset.purchaseFilter === state.filters.purchaseType);
+  });
+
+  const facs = [...new Set(state.recipients.map(r => r.faculty).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+  const facSel = $('#faculty-filter');
+  facSel.innerHTML = '<option value="">ทุกคณะ</option>'
+    + facs.map(f => `<option value="${escapeHTML(f)}" ${f === state.filters.faculty ? 'selected':''}>${escapeHTML(f)}</option>`).join('');
+  facSel.style.display = facs.length ? '' : 'none';
+
+  const majPool = state.filters.faculty ? state.recipients.filter(r => r.faculty === state.filters.faculty) : state.recipients;
+  const majs = [...new Set(majPool.map(r => r.major).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+  const majSel = $('#major-filter');
+  majSel.innerHTML = '<option value="">ทุกสาขา</option>'
+    + majs.map(m => `<option value="${escapeHTML(m)}" ${m === state.filters.major ? 'selected':''}>${escapeHTML(m)}</option>`).join('');
+  majSel.style.display = majs.length ? '' : 'none';
+
+  $('#filter-clear').disabled = !isAnyFilterActive();
+}
+
+function buildOrderSummary(r) {
+  const items = [];
+  if (r.shirtSize && r.shirtQty > 0) {
+    const qtyClass = r.shirtQty > 1 ? 'multi' : '';
+    items.push(`<span class="order-item"><span class="icon">👕</span><span class="label">เสื้อ</span><span class="size">${escapeHTML(r.shirtSize)}</span><span class="qty ${qtyClass}">×${r.shirtQty}</span></span>`);
+  }
+  if (r.shirtType) {
+    items.push(`<span class="shirt-type-tag">${escapeHTML(r.shirtType)}</span>`);
+  }
+  if (r.pantsSize && r.pantsQty > 0) {
+    const qtyClass = r.pantsQty > 1 ? 'multi' : '';
+    items.push(`<span class="order-item"><span class="icon">👖</span><span class="label">กางเกง</span><span class="size">${escapeHTML(r.pantsSize)}</span><span class="qty ${qtyClass}">×${r.pantsQty}</span></span>`);
+  }
+  if (!items.length) {
+    return `<div class="order-summary empty"><span class="order-item no-data">ไม่มีข้อมูลสินค้า</span></div>`;
+  }
+  return `<div class="order-summary">${items.join('')}</div>`;
+}
+
+function getPurchaseLabel(type) {
+  return { set: 'ซื้อเซ็ต', separate: 'ซื้อแยก', empty: 'ไม่มีออเดอร์' }[type] || '—';
+}
+
+function renderResults() {
+  const list = $('#results-list');
+  $('#results-count').textContent = state.filtered.length;
+  if (!state.recipients.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📦</div><h3>ยังไม่มีข้อมูล</h3><p>กรุณาอัปโหลดไฟล์ Excel/CSV เพื่อเริ่มต้น</p></div>`;
+    return;
+  }
+  if (!state.filtered.length) {
+    const noun = isAnyFilterActive() ? 'ที่ตรงตามเงื่อนไข' : '';
+    list.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><h3>ไม่พบรายชื่อ${noun}</h3><p>ลองปรับเงื่อนไข หรือล้างตัวกรอง</p></div>`;
+    return;
+  }
+  const q = state.searchQuery.trim();
+  list.innerHTML = state.filtered.map(r => {
+    const isRec = r.status === 'received';
+    const purchaseLabel = getPurchaseLabel(r.purchaseType);
+    const incompleteBadge = r.isIncomplete && !isRec ? `<span class="incomplete-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>ข้อมูลไม่ครบ</span>` : '';
+    const justUpdated = r._justUpdated ? 'just-updated' : '';
+    if (r._justUpdated) delete r._justUpdated;
+    const receivedBy = isRec && r.receivedBy ? `<span class="received-by">โดย ${escapeHTML(r.receivedBy)}</span>` : '';
+    return `
+      <div class="recipient-row ${isRec ? 'received' : ''} ${r.isIncomplete && !isRec ? 'incomplete' : ''} ${justUpdated}" data-id="${r.id}">
+        <div class="info">
+          <div class="name">
+            ${highlightMatch(r.name, q)}
+            <span class="status-pill ${isRec ? 'received' : 'pending'}">${isRec ? 'รับแล้ว' : 'ยังไม่รับ'}</span>
+            <span class="purchase-tag ${r.purchaseType}">${purchaseLabel}</span>
+            ${incompleteBadge}
+          </div>
+          <div class="meta">
+            ${r.code ? `<span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);">${highlightMatch(r.code, q)}</span>` : ''}
+            ${r.faculty ? `<span class="faculty-tag" title="${escapeHTML(r.faculty)}${r.major ? ' · '+escapeHTML(r.major) : ''}">${highlightMatch(r.faculty, q)}${r.major ? ' · '+highlightMatch(r.major, q) : ''}</span>` : ''}
+            ${r.receivedAt ? `<span class="ts">รับเมื่อ ${fmtDateTime(r.receivedAt)}${receivedBy}</span>` : ''}
+          </div>
+          ${buildOrderSummary(r)}
+        </div>
+        <div class="actions">
+          ${isRec
+            ? `<button class="btn btn-warn" data-action="undo" data-id="${r.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-15-6.7L3 13"/></svg>ยกเลิก</button>`
+            : `<button class="btn btn-success" data-action="confirm" data-id="${r.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>ยืนยันการรับ</button>`
+          }
+        </div>
+      </div>`;
+  }).join('');
+}
+
+const STANDARD_SIZES = new Set(['XS','SS','S','M','L','XL','XXL','2XL','3XL','4XL','5XL','6XL','7XL']);
+function isStandardSize(s) {
+  if (!s) return false;
+  if (STANDARD_SIZES.has(s)) return true;
+  if (/^\d{2,3}$/.test(s)) return true;
+  return false;
+}
+
+function renderInventory() {
+  const shirtTotals = {}, pantsTotals = {};
+  const shirtPending = {}, pantsPending = {};
+  let setCnt = 0, sepCnt = 0;
+  for (const r of state.recipients) {
+    if (r.purchaseType === 'set') setCnt++;
+    else if (r.purchaseType === 'separate') sepCnt++;
+    if (r.shirtSize && r.shirtQty > 0) {
+      shirtTotals[r.shirtSize] = (shirtTotals[r.shirtSize] || 0) + r.shirtQty;
+      if (r.status !== 'received') shirtPending[r.shirtSize] = (shirtPending[r.shirtSize] || 0) + r.shirtQty;
+    }
+    if (r.pantsSize && r.pantsQty > 0) {
+      pantsTotals[r.pantsSize] = (pantsTotals[r.pantsSize] || 0) + r.pantsQty;
+      if (r.status !== 'received') pantsPending[r.pantsSize] = (pantsPending[r.pantsSize] || 0) + r.pantsQty;
+    }
+  }
+  $('#ps-set').textContent = setCnt;
+  $('#ps-separate').textContent = sepCnt;
+
+  const sizeOrder = ['XS','SS','S','M','L','XL','XXL','2XL','3XL','4XL','5XL','6XL','7XL'];
+  const sortKeys = (keys) => {
+    const std = [], num = [], other = [];
+    keys.forEach(k => {
+      if (STANDARD_SIZES.has(k)) std.push(k);
+      else if (/^\d+$/.test(k)) num.push(k);
+      else other.push(k);
+    });
+    std.sort((a,b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
+    num.sort((a,b) => parseFloat(a) - parseFloat(b));
+    other.sort();
+    return [...std, ...num, ...other];
+  };
+
+  const renderMatrix = (totals, pending) => {
+    const keys = sortKeys(Object.keys(totals));
+    if (!keys.length) return `<div style="grid-column:1/-1;text-align:center;color:var(--ink-muted);font-size:13px;padding:20px 0;">ไม่มีข้อมูล</div>`;
+    return keys.map(k => {
+      const total = totals[k];
+      const remaining = pending[k] || 0;
+      const depleted = remaining === 0 ? 'depleted' : '';
+      const unusual = !isStandardSize(k) ? 'unusual' : '';
+      const display = !isStandardSize(k) && k.length > 8 ? k.substring(0, 8) + '...' : k;
+      return `<div class="matrix-cell ${depleted} ${unusual}" title="${escapeHTML(k)}"><div class="size">${escapeHTML(display)}</div><div class="count">${remaining}<span class="total-num"> / ${total}</span></div></div>`;
+    }).join('');
+  };
+
+  $('#shirt-matrix').innerHTML = renderMatrix(shirtTotals, shirtPending);
+  $('#pants-matrix').innerHTML = renderMatrix(pantsTotals, pantsPending);
+
+  const shirtRem = Object.values(shirtPending).reduce((a,b) => a+b, 0);
+  const shirtAll = Object.values(shirtTotals).reduce((a,b) => a+b, 0);
+  const pantsRem = Object.values(pantsPending).reduce((a,b) => a+b, 0);
+  const pantsAll = Object.values(pantsTotals).reduce((a,b) => a+b, 0);
+  $('#shirt-total').textContent = `เหลือ ${shirtRem} / ${shirtAll}`;
+  $('#pants-total').textContent = `เหลือ ${pantsRem} / ${pantsAll}`;
+}
+
+function renderEventList() {
+  const list = $('#event-list');
+  if (!state.events.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:30px 10px;"><div class="icon" style="font-size:32px;">📅</div><p>ยังไม่มีกิจกรรม</p></div>`;
+    return;
+  }
+  list.innerHTML = state.events.map(e => `
+    <div class="event-item ${e.id === state.currentEventId ? 'active' : ''}" data-id="${e.id}">
+      <div class="info">
+        <div class="name">${escapeHTML(e.name)}</div>
+        <div class="meta">สร้างเมื่อ ${fmtDate(e.createdAt)}${e.createdBy ? ' โดย ' + escapeHTML(e.createdBy) : ''}</div>
+      </div>
+      <button class="del" data-del="${e.id}" title="ลบกิจกรรม">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function renderAll() {
+  renderEventInfo();
+  renderStats();
+  renderFilterBar();
+  renderResults();
+  renderInventory();
+  renderEventList();
+}
+
+function openModal(id) { $('#' + id).classList.add('show'); }
+function closeModal(id) { $('#' + id).classList.remove('show'); }
+
+let confirmCallback = null;
+function confirmAction(title, msg, cb) {
+  $('#confirm-title').textContent = title;
+  $('#confirm-message').textContent = msg;
+  confirmCallback = cb;
+  openModal('confirm-modal');
+}
+
+/* ============== EXPORT ============== */
+function getExportData(scope='filtered') {
+  const src = scope === 'filtered' ? state.filtered : state.recipients;
+  return src.slice()
+    .sort((a,b) => a.name.localeCompare(b.name, 'th'))
+    .map((r, i) => ({
+      'ลำดับ': i + 1,
+      'รหัส': r.code || '',
+      'ชื่อ-นามสกุล': r.name,
+      'คณะ': r.faculty || '',
+      'สาขา': r.major || '',
+      'ประเภท': getPurchaseLabel(r.purchaseType),
+      'ขนาดเสื้อ': r.shirtSize || '',
+      'จำนวนเสื้อ': r.shirtQty || '',
+      'ขนาดกางเกง': r.pantsSize || '',
+      'จำนวนกางเกง': r.pantsQty || '',
+      'สถานะ': r.status === 'received' ? 'รับแล้ว' : 'ยังไม่รับ',
+      'ผู้ส่งมอบ': r.receivedBy || '',
+      'วันเวลาที่รับ': r.receivedAt ? fmtDateTime(r.receivedAt) : '-',
+    }));
+}
+
+function getExportScope() { return isAnyFilterActive() ? 'ask' : 'all'; }
+
+function exportExcel() {
+  if (!state.recipients.length) { toast('ไม่มีข้อมูลให้ส่งออก', 'warn'); return; }
+  const doExport = (scope) => {
+    const ev = state.events.find(e => e.id === state.currentEventId);
+    const eventName = ev?.name || 'event';
+    const data = getExportData(scope);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{wch:6},{wch:14},{wch:30},{wch:24},{wch:24},{wch:12},{wch:10},{wch:8},{wch:12},{wch:8},{wch:10},{wch:14},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws, 'รายชื่อ');
+
+    const total = state.recipients.length;
+    const received = state.recipients.filter(r => r.status === 'received').length;
+    const setCnt = state.recipients.filter(r => r.purchaseType === 'set').length;
+    const sepCnt = state.recipients.filter(r => r.purchaseType === 'separate').length;
+    const totalShirts = state.recipients.reduce((s,r) => s + (r.shirtQty||0), 0);
+    const totalPants = state.recipients.reduce((s,r) => s + (r.pantsQty||0), 0);
+
+    const summary = [
+      ['สรุปการส่งมอบเสื้อผ้า'],
+      ['กิจกรรม', eventName],
+      ['วันที่ส่งออก', fmtDateTime(nowISO())],
+      ['ส่งออกโดย', state.user || '-'],
+      ['ขอบเขต', scope === 'filtered' ? 'ตามตัวกรองปัจจุบัน' : 'ทั้งหมด'],
+      [],
+      ['ทั้งหมด', total + ' คน'],
+      ['รับแล้ว', received + ' คน'],
+      ['ยังไม่รับ', (total - received) + ' คน'],
+      [],
+      ['ซื้อเซ็ต', setCnt + ' คน'],
+      ['ซื้อแยก', sepCnt + ' คน'],
+      [],
+      ['ยอดรวมเสื้อ', totalShirts + ' ตัว'],
+      ['ยอดรวมกางเกง', totalPants + ' ตัว'],
+      [],
+      ['คลังขนาด — เสื้อ'],
+      ['ขนาด','ทั้งหมด','เหลือ'],
+    ];
+    const sCount = {}, sRem = {};
+    state.recipients.forEach(r => {
+      if (!r.shirtSize || r.shirtQty <= 0) return;
+      sCount[r.shirtSize] = (sCount[r.shirtSize]||0) + r.shirtQty;
+      if (r.status !== 'received') sRem[r.shirtSize] = (sRem[r.shirtSize]||0) + r.shirtQty;
+    });
+    Object.keys(sCount).sort().forEach(k => summary.push([k, sCount[k], sRem[k] || 0]));
+    summary.push([], ['คลังขนาด — กางเกง'], ['ขนาด','ทั้งหมด','เหลือ']);
+    const pCount = {}, pRem = {};
+    state.recipients.forEach(r => {
+      if (!r.pantsSize || r.pantsQty <= 0) return;
+      pCount[r.pantsSize] = (pCount[r.pantsSize]||0) + r.pantsQty;
+      if (r.status !== 'received') pRem[r.pantsSize] = (pRem[r.pantsSize]||0) + r.pantsQty;
+    });
+    Object.keys(pCount).sort().forEach(k => summary.push([k, pCount[k], pRem[k] || 0]));
+
+    const ws2 = XLSX.utils.aoa_to_sheet(summary);
+    ws2['!cols'] = [{wch:30},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'สรุป');
+
+    const dateStr = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `รายงานส่งมอบเสื้อ_${eventName}_${dateStr}.xlsx`);
+    toast('ส่งออก Excel สำเร็จ', 'success');
+  };
+  if (getExportScope() === 'ask') {
+    confirmAction('ส่งออก Excel', `มีตัวกรองอยู่ (${state.filtered.length}/${state.recipients.length}) — ตกลง = ส่งเฉพาะที่กรอง`, () => doExport('filtered'));
+  } else { doExport('all'); }
+}
+
+async function exportPDF() {
+  if (!state.recipients.length) { toast('ไม่มีข้อมูลให้ส่งออก', 'warn'); return; }
+  const runExport = async (scope) => {
+    toast('กำลังเตรียม PDF...', 'info');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+    try {
+      const fontUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sarabun/Sarabun-Regular.ttf';
+      const fontBoldUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sarabun/Sarabun-Bold.ttf';
+      const [reg, bold] = await Promise.all([fetch(fontUrl).then(r => r.arrayBuffer()), fetch(fontBoldUrl).then(r => r.arrayBuffer())]);
+      const toB64 = (buf) => { let bin = ''; const bytes = new Uint8Array(buf); for (let i=0; i<bytes.length; i++) bin += String.fromCharCode(bytes[i]); return btoa(bin); };
+      doc.addFileToVFS('Sarabun-Regular.ttf', toB64(reg));
+      doc.addFileToVFS('Sarabun-Bold.ttf', toB64(bold));
+      doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+      doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+      doc.setFont('Sarabun', 'normal');
+    } catch (err) { console.warn('Font load failed', err); }
+    const ev = state.events.find(e => e.id === state.currentEventId);
+    const eventName = ev?.name || 'event';
+    const total = state.recipients.length;
+    const received = state.recipients.filter(r => r.status === 'received').length;
+    doc.setFont('Sarabun', 'bold'); doc.setFontSize(18);
+    doc.text('รายงานการส่งมอบเสื้อผ้า', 40, 50);
+    doc.setFont('Sarabun', 'normal'); doc.setFontSize(11);
+    doc.text(`กิจกรรม: ${eventName} · วันที่: ${fmtDateTime(nowISO())}`, 40, 72);
+    doc.setFont('Sarabun', 'bold'); doc.setFontSize(12);
+    doc.text(`ทั้งหมด ${total} | รับแล้ว ${received} | ยังไม่รับ ${total - received}`, 40, 94);
+    const data = getExportData(scope).map(r => [r['ลำดับ'], r['รหัส'], r['ชื่อ-นามสกุล'], r['คณะ'], r['สาขา'], r['ประเภท'], r['ขนาดเสื้อ'], r['จำนวนเสื้อ'], r['ขนาดกางเกง'], r['จำนวนกางเกง'], r['สถานะ'], r['ผู้ส่งมอบ']]);
+    doc.autoTable({
+      startY: 110,
+      head: [['ลำดับ','รหัส','ชื่อ-นามสกุล','คณะ','สาขา','ประเภท','เสื้อ','จน.','กางเกง','จน.','สถานะ','ผู้ส่งมอบ']],
+      body: data,
+      styles: { font:'Sarabun', fontSize:8.5, cellPadding:3 },
+      headStyles: { font:'Sarabun', fontStyle:'bold', fillColor:[216,58,24], textColor:255 },
+      alternateRowStyles: { fillColor:[248,245,238] },
+      columnStyles: {
+        0: { cellWidth: 28, halign:'center' }, 1: { cellWidth: 56 }, 2: { cellWidth: 120 },
+        3: { cellWidth: 92 }, 4: { cellWidth: 92 }, 5: { cellWidth: 56, halign:'center' },
+        6: { cellWidth: 36, halign:'center' }, 7: { cellWidth: 26, halign:'center' },
+        8: { cellWidth: 44, halign:'center' }, 9: { cellWidth: 26, halign:'center' },
+        10: { cellWidth: 50, halign:'center' }, 11: { cellWidth: 80 },
+      },
+      didParseCell: (hd) => {
+        if (hd.section === 'body' && hd.column.index === 10) {
+          if (hd.cell.text[0] === 'รับแล้ว') { hd.cell.styles.textColor = [45, 106, 79]; hd.cell.styles.fontStyle = 'bold'; }
+          else hd.cell.styles.textColor = [192, 138, 0];
+        }
+      }
+    });
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFont('Sarabun','normal'); doc.setFontSize(9); doc.setTextColor(140);
+      const pw = doc.internal.pageSize.getWidth();
+      const ph = doc.internal.pageSize.getHeight();
+      doc.text(`หน้า ${i} / ${pageCount}`, pw - 80, ph - 20);
+      doc.text('PSU SUS · ระบบ Cloud จัดการส่งมอบเสื้อผ้า', 40, ph - 20);
+    }
+    doc.save(`รายงานส่งมอบเสื้อ_${eventName}_${new Date().toISOString().slice(0,10)}.pdf`);
+    toast('ส่งออก PDF สำเร็จ', 'success');
+  };
+  if (getExportScope() === 'ask') {
+    confirmAction('ส่งออก PDF', `มีตัวกรองอยู่ (${state.filtered.length}/${state.recipients.length}) — ตกลง = ส่งเฉพาะที่กรอง`, () => runExport('filtered'));
+  } else { runExport('all'); }
+}
+
+/* ============== WIRE ============== */
+function wireEvents() {
+  $('#theme-toggle').addEventListener('click', toggleTheme);
+
+  // User name
+  $('#btn-save-user').addEventListener('click', () => {
+    const name = $('#user-name-input').value.trim();
+    if (!name) { toast('กรุณาใส่ชื่อ', 'warn'); return; }
+    saveUserName(name);
+    closeModal('user-modal');
+    toast(`สวัสดีคุณ ${name}!`, 'success');
+  });
+  $('#user-name-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-save-user').click(); });
+  $('#btn-change-user').addEventListener('click', () => {
+    $('#user-name-input').value = state.user || '';
+    openModal('user-modal');
+  });
+
+  // Event management
+  $('#event-switch-btn').addEventListener('click', () => { renderEventList(); openModal('event-modal'); });
+  $('#btn-create-event').addEventListener('click', async () => {
+    if (!requireUserName()) return;
+    const name = $('#new-event-name').value;
+    const ev = await createEvent(name);
+    if (ev) { $('#new-event-name').value = ''; resetFilters(); }
+  });
+  $('#new-event-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-create-event').click(); });
+
+  $('#event-list').addEventListener('click', async (e) => {
+    const delBtn = e.target.closest('[data-del]');
+    if (delBtn) {
+      e.stopPropagation();
+      const id = delBtn.dataset.del;
+      const ev = state.events.find(x => x.id === id);
+      confirmAction('ลบกิจกรรม', `ลบ "${ev?.name}" และข้อมูลทั้งหมด? การกระทำนี้จะลบทุกเครื่อง ไม่สามารถย้อนกลับได้`, async () => {
+        await deleteEvent(id);
+      });
+      return;
+    }
+    const item = e.target.closest('.event-item');
+    if (item) { await switchEvent(item.dataset.id); closeModal('event-modal'); }
+  });
+
+  document.body.addEventListener('click', (e) => {
+    const close = e.target.closest('[data-close]');
+    if (close) closeModal(close.dataset.close);
+    if (e.target.classList.contains('modal-back')) e.target.classList.remove('show');
+  });
+
+  $('#btn-confirm-action').addEventListener('click', () => {
+    if (confirmCallback) { const cb = confirmCallback; confirmCallback = null; cb(); }
+    closeModal('confirm-modal');
+  });
+
+  $('#btn-upload').addEventListener('click', () => {
+    if (!state.currentEventId) { toast('กรุณาสร้างกิจกรรมก่อน', 'warn'); $('#event-switch-btn').click(); return; }
+    if (!requireUserName()) return;
+    $('#upload-options').style.display = 'none';
+    $('#import-summary-area').innerHTML = '';
+    $('#import-progress-area').style.display = 'none';
+    pendingImport = null; parseContext = null;
+    openModal('upload-modal');
+  });
+  $('#dropzone').addEventListener('click', () => $('#file-input').click());
+  $('#dropzone').addEventListener('dragover', (e) => { e.preventDefault(); $('#dropzone').classList.add('drag'); });
+  $('#dropzone').addEventListener('dragleave', () => $('#dropzone').classList.remove('drag'));
+  $('#dropzone').addEventListener('drop', (e) => {
+    e.preventDefault(); $('#dropzone').classList.remove('drag');
+    const file = e.dataTransfer.files[0]; if (file) handleFile(file);
+  });
+  $('#file-input').addEventListener('change', (e) => { const file = e.target.files[0]; if (file) handleFile(file); });
+  $('#btn-import-replace').addEventListener('click', () => {
+    confirmAction('แทนที่ข้อมูล', `จะลบข้อมูลเดิมในกิจกรรมนี้ทุกเครื่อง และนำเข้าใหม่ ${pendingImport?.length || 0} รายการ?`, () => commitImport('replace'));
+  });
+  $('#btn-import-append').addEventListener('click', () => commitImport('append'));
+
+  let searchTimer;
+  $('#search-input').addEventListener('input', (e) => {
+    state.searchQuery = e.target.value;
+    $('#search-clear').classList.toggle('show', !!state.searchQuery);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { applyFilters(); renderResults(); renderFilterBar(); }, 100);
+  });
+  $('#search-clear').addEventListener('click', () => {
+    $('#search-input').value = ''; state.searchQuery = '';
+    $('#search-clear').classList.remove('show');
+    applyFilters(); renderResults(); renderFilterBar(); $('#search-input').focus();
+  });
+
+  $$('.stat[data-status-filter]').forEach(card => {
+    card.addEventListener('click', () => {
+      const f = card.dataset.statusFilter;
+      state.filters.status = state.filters.status === f && f !== 'all' ? 'all' : f;
+      applyFilters(); renderAll();
+    });
+  });
+  $$('.filter-pill[data-purchase-filter]').forEach(p => {
+    p.addEventListener('click', () => {
+      state.filters.purchaseType = p.dataset.purchaseFilter;
+      applyFilters(); renderAll();
+    });
+  });
+  $('#faculty-filter').addEventListener('change', (e) => {
+    state.filters.faculty = e.target.value;
+    state.filters.major = '';
+    applyFilters(); renderAll();
+  });
+  $('#major-filter').addEventListener('change', (e) => {
+    state.filters.major = e.target.value;
+    applyFilters(); renderAll();
+  });
+  $('#filter-clear').addEventListener('click', () => { resetFilters(); applyFilters(); renderAll(); });
+
+  $('#results-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    if (!requireUserName()) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    const r = state.recipients.find(x => x.id === id);
+    if (!r) return;
+    if (action === 'confirm') {
+      setStatus(id, 'received');
+      toast(`✓ ${r.name}`, 'success');
+    } else if (action === 'undo') {
+      confirmAction('ยกเลิกการยืนยัน', `ยกเลิกการรับของ "${r.name}"?`, () => {
+        setStatus(id, 'pending');
+        toast(`ยกเลิก: ${r.name}`, 'info');
+      });
+    }
+  });
+
+  $('#btn-export-excel').addEventListener('click', exportExcel);
+  $('#btn-export-pdf').addEventListener('click', exportPDF);
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); $('#search-input').focus(); }
+    if (e.key === 'Escape') $$('.modal-back.show').forEach(m => m.classList.remove('show'));
+  });
+}
+
+/* ============== BOOT ============== */
+async function boot() {
+  setupIntro();
+  initTheme();
+  loadUserName();
+  wireEvents();
+
+  if (!isConfigValid()) {
+    return; // setup screen already shown
+  }
+
+  if (!state.user) {
+    // Prompt user name on first use
+    setTimeout(() => openModal('user-modal'), 1000);
+  }
+
+  // Start listening to events (real-time)
+  await subscribeEvents();
+}
+
+boot().catch(err => {
+  console.error(err);
+  toast('เกิดข้อผิดพลาดในการเริ่มต้น: ' + err.message, 'error');
+  updateConnectionStatus('error');
+});
+</script>
+
+</body>
+</html>
